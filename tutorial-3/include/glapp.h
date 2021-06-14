@@ -56,11 +56,11 @@ struct GLApp
 	{
 		GLfloat angle_speed{ 0.0f };
 		GLfloat angle_disp{ 0.0f };
-		glm::vec2 scaling{ 0.0f, 0.0f };
+		glm::vec2 scaling{ 10.0f, 10.0f };
 		glm::vec2 position{ 0.0f, 0.0f };
-		glm::mat3 mdl_to_ndc_xform ;
-		GLuint mdl_ref ;
-		GLuint shd_ref ;
+		glm::mat3 mdl_to_ndc_xform{ 0 };
+		GLuint mdl_ref{ 0 };
+		GLuint shd_ref{ 0 } ;
 		void init () ;
 		void draw () const ;
 		void update ( GLdouble delta_time ) ;

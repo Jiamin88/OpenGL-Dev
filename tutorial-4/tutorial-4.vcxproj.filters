@@ -13,17 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\glapp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\glhelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\glslshader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <Filter Include="Resource Files\Shaders">
+      <UniqueIdentifier>{fd985c5e-9869-4ffd-b4a8-e5df916ac922}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\glapp.cpp">
@@ -40,10 +32,21 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shaders\tutorial-3.frag">
+    <ClInclude Include="include\glapp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\glhelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\glslshader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\tutorial-4.frag">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="..\shaders\tutorial-3.vert">
+    <None Include="..\shaders\tutorial-4.vert">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

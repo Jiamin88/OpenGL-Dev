@@ -39,12 +39,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\shaders\tutorial-3.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="..\shaders\tutorial-3.vert">
-      <Filter>Resource Files</Filter>
-    </None>
-  </ItemGroup>
 </Project>

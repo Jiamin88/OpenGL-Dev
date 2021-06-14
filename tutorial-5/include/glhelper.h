@@ -43,7 +43,13 @@ struct GLHelper
 
 
   static GLboolean mouseLeft;
-  static GLboolean keystateP;
+
+  static GLboolean keystateH;
+  static GLboolean keystateK;
+  static GLboolean keystateZ;
+  static GLboolean keystateU;
+  static GLboolean keystateV;
+
   static GLint width, height;
   static GLdouble fps;
   static std::string title;

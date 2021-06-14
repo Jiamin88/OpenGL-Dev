@@ -25,7 +25,11 @@ GLint GLHelper::height;
 GLdouble GLHelper::fps;
 std::string GLHelper::title;
 GLFWwindow* GLHelper::ptr_window;
-GLboolean GLHelper::keystateP = GL_FALSE;
+GLboolean GLHelper::keystateH = GL_FALSE;
+GLboolean GLHelper::keystateK = GL_FALSE;
+GLboolean GLHelper::keystateZ = GL_FALSE;
+GLboolean GLHelper::keystateU = GL_FALSE;
+GLboolean GLHelper::keystateV = GL_FALSE;
 GLboolean GLHelper::mouseLeft = GL_FALSE;
 
 /*  _________________________________________________________________________ */
@@ -187,17 +191,26 @@ void GLHelper::key_cb ( GLFWwindow* pwin , int key , int scancode , int action ,
 		{
 			glfwSetWindowShouldClose ( pwin , GLFW_TRUE );
 		}
-		keystateP = ( key == GLFW_KEY_P ) ? GL_TRUE : GL_FALSE;
+
+		keystateH = ( key == GLFW_KEY_H ) ? GL_TRUE : GL_FALSE;
+		keystateK = ( key == GLFW_KEY_K ) ? GL_TRUE : GL_FALSE;
+		keystateZ = ( key == GLFW_KEY_Z ) ? GL_TRUE : GL_FALSE;
+		keystateU = ( key == GLFW_KEY_U ) ? GL_TRUE : GL_FALSE;
+		keystateV = ( key == GLFW_KEY_V ) ? GL_TRUE : GL_FALSE;
 	}
 	else if( GLFW_REPEAT == action )
 	{
 		// key state was and is being pressed
-		keystateP = GL_FALSE;
+		keystateV = GL_FALSE;
 	}
 	else if( GLFW_RELEASE == action )
 	{
 		// key start changes from pressed to released
-		keystateP = GL_FALSE;
+		keystateV = GL_FALSE;
+		keystateH = GL_FALSE;
+		keystateK = GL_FALSE;
+		keystateZ = GL_FALSE;
+		keystateU = GL_FALSE;
 	}
 }
 
@@ -267,7 +280,7 @@ void GLHelper::mousebutton_cb ( GLFWwindow* pwin , int button , int action , int
 		}
 	}
 
-}
+	}
 
 /*  _________________________________________________________________________*/
 /*! mousepos_cb
