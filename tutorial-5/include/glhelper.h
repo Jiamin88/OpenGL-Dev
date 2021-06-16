@@ -1,7 +1,7 @@
 /* !
-@file    glhelper.h
-@author  pghali@digipen.edu
-@date    10/11/2016
+@file    glapp.cpp
+@author  Jia Min / j.jiamin@digipen.edu
+@date    16/06/2021
 
 This file contains the declaration of namespace Helper that encapsulates the
 functionality required to create an OpenGL context using GLFW; use GLEW
@@ -49,6 +49,9 @@ struct GLHelper
   static GLboolean keystateZ;
   static GLboolean keystateU;
   static GLboolean keystateV;
+  static GLboolean keystateT;
+  static GLboolean keystateM;
+  static GLboolean keystateA;
 
   static GLint width, height;
   static GLdouble fps;

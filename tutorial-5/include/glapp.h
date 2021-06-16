@@ -1,7 +1,7 @@
 /* !
-@file    glapp.h
-@author  pghali@digipen.edu
-@date    10/11/2016
+@file    glapp.cpp
+@author  Jia Min / j.jiamin@digipen.edu
+@date    16/06/2021
 
 This file contains the declaration of namespace GLApp that encapsulates the
 functionality required to implement an OpenGL application including
@@ -44,15 +44,25 @@ struct GLApp
 		GLuint		primitive_cnt{ 0 };			// added for tutorial 2
 		GLuint		vaoid{ 0 };					// same as tutorial 1
 		GLuint		draw_cnt{ 0 };				// added for tutorial 2
+		GLSLShader	shdr_pgm;					// which shader program?
+
+
+		// member functions defined in glapp.cpp
+		void setup_vao ();
+		void setup_shdrpgm ();
+		void update ( double delta_time );
+		void draw ();
+
 	};
+
+	static GLModel mdl;
+	static GLuint setup_texobj ( std::string pathname );
 
 	struct GLViewport
 	{
 		GLint x , y;
 		GLsizei width , height;
 	};
-
-
 
 	struct GLObject
 	{
@@ -75,58 +85,8 @@ struct GLApp
 		void update ( GLdouble delta_time ) ;
 	};
 
-	struct Camera2D
-	{
-		GLApp::GLObject* pgo{ nullptr }; // pointer to game object that embeds camera
-		glm::vec2 right{ 0 } , up{ 0 };
-
-		GLint height{ 1000 };
-		GLint width{ 0 };
-		GLfloat ar{ 0 };
-
-		glm::mat3 view_xform{ 0 };
-		glm::mat3 camwin_to_ndc_xform{ 0 };
-		glm::mat3 world_to_ndc_xform{ 0 };
-
-		// window change parameters ...
-		GLint min_height{ 500 } , max_height{ 2000 };
-
-		// height is increasing if 1 and decreasing if -1
-		GLint height_chg_dir{ 1 };
-
-		// increments by which window height is changed per Z key press
-		GLint height_chg_val{ 5 };
-
-		// camera's speed when button U is pressed
-		GLfloat linear_speed{ 2.f };
-
-		// keyboard button press flags
-		GLboolean camtype_flag{ GL_FALSE }; // button V
-		GLboolean zoom_flag{ GL_FALSE }; // button Z
-		GLboolean left_turn_flag{ GL_FALSE }; // button H
-		GLboolean right_turn_flag{ GL_FALSE }; // button K
-		GLboolean move_flag{ GL_FALSE }; // button U
-
-
-		void init ( GLFWwindow* pWindow , GLApp::GLObject* ptr );
-		void update ( GLFWwindow* pWindow , GLdouble delta_time );
-	};
-
-
-	// define object of type Camera2D ...
-	static Camera2D camera2d;
-
 	static std::map<std::string , GLSLShader> shdrpgms; // singleton
 	static std::map<std::string , GLModel> models; // singleton
 	static std::map<std::string , GLObject> objects; // singleton
-
-	// function to insert shader program into container GLApp::shdrpgms ...
-	static void insert_shdrpgm ( std::string shdr_pgm_name ,
-								 std::string vtx_shdr ,
-								 std::string frg_shdr );
-
-	// function to parse scene file ...
-	static void init_scene ( std::string );
-
 };
 #endif /* GLAPP_H */

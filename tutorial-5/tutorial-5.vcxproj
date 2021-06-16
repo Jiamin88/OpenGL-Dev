@@ -89,6 +89,10 @@
     <ClCompile Include="src\glslshader.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\tutorial-5.frag" />
+    <None Include="..\shaders\tutorial-5.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

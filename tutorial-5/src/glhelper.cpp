@@ -1,7 +1,7 @@
 /*!
-@file    glhelper.cpp
-@author  pghali@digipen.edu
-@date    10/11/2016
+@file    glapp.cpp
+@author  Jia Min / j.jiamin@digipen.edu
+@date    16/06/2021
 
 This file implements functionality useful and necessary to build OpenGL
 applications including use of external APIs such as GLFW to create a
@@ -31,6 +31,9 @@ GLboolean GLHelper::keystateZ = GL_FALSE;
 GLboolean GLHelper::keystateU = GL_FALSE;
 GLboolean GLHelper::keystateV = GL_FALSE;
 GLboolean GLHelper::mouseLeft = GL_FALSE;
+GLboolean GLHelper::keystateT = GL_FALSE;
+GLboolean GLHelper::keystateM = GL_FALSE;
+GLboolean GLHelper::keystateA = GL_FALSE;
 
 /*  _________________________________________________________________________ */
 /*! init
@@ -197,11 +200,17 @@ void GLHelper::key_cb ( GLFWwindow* pwin , int key , int scancode , int action ,
 		keystateZ = ( key == GLFW_KEY_Z ) ? GL_TRUE : GL_FALSE;
 		keystateU = ( key == GLFW_KEY_U ) ? GL_TRUE : GL_FALSE;
 		keystateV = ( key == GLFW_KEY_V ) ? GL_TRUE : GL_FALSE;
+		keystateT = ( key == GLFW_KEY_T ) ? GL_TRUE : GL_FALSE;
+		keystateM = ( key == GLFW_KEY_M ) ? GL_TRUE : GL_FALSE;
+		keystateA = ( key == GLFW_KEY_A ) ? GL_TRUE : GL_FALSE;
 	}
 	else if( GLFW_REPEAT == action )
 	{
 		// key state was and is being pressed
 		keystateV = GL_FALSE;
+		keystateT = GL_FALSE;
+		keystateM = GL_FALSE;
+		keystateA = GL_FALSE;
 	}
 	else if( GLFW_RELEASE == action )
 	{
@@ -211,6 +220,9 @@ void GLHelper::key_cb ( GLFWwindow* pwin , int key , int scancode , int action ,
 		keystateK = GL_FALSE;
 		keystateZ = GL_FALSE;
 		keystateU = GL_FALSE;
+		keystateT = GL_FALSE;
+		keystateM = GL_FALSE;
+		keystateA = GL_FALSE;
 	}
 }
 

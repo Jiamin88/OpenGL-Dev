@@ -1,7 +1,7 @@
 /*!
 @file    glapp.cpp
-@author  pghali@digipen.edu
-@date    10/11/2016
+@author  Jia Min / j.jiamin@digipen.edu
+@date    16/06/2021
 
 This file implements functionality useful and necessary to build OpenGL
 applications including use of external APIs such as GLFW to create a
@@ -22,6 +22,7 @@ to OpenGL implementations.
 #include <vector>
 #include <random>
 #include <chrono>
+#include <fstream> 
 
 
 /* Debugging tool
@@ -32,11 +33,26 @@ to OpenGL implementations.
 	x;\
 	ASSERT(GLLogCall(#x , __FILE__ , __LINE__))
 
+/**
+ * @brief 
+ *	The glGetError function returns one of the following error codes, or GL_NO_ERROR if no (more) errors are available. Each error code represents a category of user error.
+*/
 void GLClearError ()
 {
 	while( glGetError () != GL_NO_ERROR );
 }
-
+/**
+ * @brief 
+ *	A simple function to extract the current OpenGL errors.
+ * @param function 
+ *	It will print out the name of the function .
+ * @param file 
+ *	Which file is located will be printed out.
+ * @param line 
+ *	In which line is the error located at ?
+ * @return 
+ *	Check the console for the errors.
+*/
 bool GLLogCall ( const char* function , const char* file , int line )
 {
 	while( GLenum error = glGetError () )
@@ -58,13 +74,26 @@ bool GLLogCall ( const char* function , const char* file , int line )
 std::map<std::string , GLSLShader> GLApp::shdrpgms;
 std::map<std::string , GLApp::GLModel> GLApp::models;
 std::map<std::string , GLApp::GLObject> GLApp::objects;
-GLApp::Camera2D GLApp::camera2d;
-GLboolean keystateVlast = false;
-GLboolean heightchange = false;
+
+GLApp::GLModel GLApp::mdl{};
+
+int uTileSize = 32 ;
+int s_min = 16 ;
+int s_max = 256;
+int step = 30;
+
+GLuint images{ 0 };
+float changes{ 0.0f };
+
+GLboolean Tlast = false;
+GLboolean Mlast = false;
+GLboolean Alast = false;
+int shaderMode = 0;
+bool uModulate = false;
+bool uBlend = false;
 
 void GLApp::init ()
 {
-
 	glClearColor ( 1.f , 1.f , 1.f , 1.f );
 
 	GLint w{ GLHelper::width } , h{ GLHelper::height };
@@ -72,421 +101,236 @@ void GLApp::init ()
 
 	GLHelper::print_specs ();
 
-	GLApp::init_scene ( "../scenes/tutorial-4.scn" );
+	mdl.setup_vao ();
+	mdl.setup_shdrpgm ();
 
-	GLApp::camera2d.init ( GLHelper::ptr_window ,
-						   &GLApp::objects.at ( "Camera" ) );
-
-
+	images = setup_texobj ( "../images/duck-rgba-256.tex" );
 }
 
 void GLApp::update ( double delta_time )
 {
-	GLApp::camera2d.update ( GLHelper::ptr_window , delta_time );
-
-	for( std::map <std::string , GLObject> ::iterator obj = objects.begin (); obj != objects.end (); ++obj )
-	{
-		obj->second.update ( delta_time );
-	}
-
-	keystateVlast = GLHelper::keystateV;
+	mdl.update ( delta_time );
 }
 
 void GLApp::draw ()
 {
-	// write window title with stuff similar to sample ...
-	// how? collect everything you want written to title bar in a
-	// std::string object named stitle
-
 	std::stringstream ss;
 	ss << std::fixed;
+	
+	ss << std::fixed;
 	ss.precision ( 2 );
-	ss << GLHelper::title << " | "
-		<< "FPS: " << GLHelper::fps << " | "
-		<< "Camera position: (" << camera2d.pgo->position.x << "," << camera2d.pgo->position.y << ") | "
-		<< "Camera orientation: " << ( int ) ( camera2d.pgo->orientation.x * ( 180.0f / 3.14f ) ) << " degrees | "
-		<< "Window height: " << camera2d.height;
+	ss << GLHelper::title << " | Use T to change task | Use M to modulate mode | Use A to toggle alpha blending | FPS: " <<
+		GLHelper::fps;
+
 	glfwSetWindowTitle ( GLHelper::ptr_window , ss.str ().c_str () );
 
-	// clear back buffer as before ...
+	// clear back buffer as before
 	glClear ( GL_COLOR_BUFFER_BIT );
 
-	for( std::map <std::string , GLObject> ::iterator obj = objects.begin (); obj != objects.end (); ++obj )
-	{
-		if( obj->first != "Camera" )
-		{
-			obj->second.draw ();
-		}
-	}
-
-	objects[ "Camera" ].draw ();
-
+	// now, render rectangular model from NDC coordinates to viewport
+	mdl.draw ();
 }
 
 void GLApp::cleanup ()
 {}
 
-void GLApp::insert_shdrpgm ( std::string shdr_pgm_name , std::string vtx_shdr , std::string frg_shdr )
+GLuint GLApp::setup_texobj ( std::string pathname )
 {
-	std::vector<std::pair<GLenum , std::string>> shdr_files
-	{
-		std::make_pair ( GL_VERTEX_SHADER, vtx_shdr ),
-		std::make_pair ( GL_FRAGMENT_SHADER, frg_shdr )
-	};
-
-	GLSLShader shdr_pgm;
-	shdr_pgm.CompileLinkValidate ( shdr_files );
-	if( GL_FALSE == shdr_pgm.IsLinked () )
-	{
-		std::cout << "Unable to compile/link/validate shader programs\n";
-		std::cout << shdr_pgm.GetLog () << "\n";
-		std::exit ( EXIT_FAILURE );
-	}
-
-	// add compiled, linked, and validated shader program to
-	// std::map container GLApp::shdrpgms
-	GLApp::shdrpgms[ shdr_pgm_name ] = shdr_pgm;
-}
-
-
-void GLApp::init_scene ( std::string scene_filename )
-{
-	std::ifstream ifs ( scene_filename , std::ios::in );
+	GLuint width{ 256 } , height{ 256 } , bytes_per_texel{ 4 };
+	GLuint byte_size = width * height * bytes_per_texel ;
+	char* ptr_texels = new char[ byte_size ];
+	// open binary file
+	std::ifstream ifs{ pathname, std::ios::in | std::ios::binary };
 	if( !ifs )
 	{
-		std::cout <<
-			"Error : Unable to open scene file : " <<
-			scene_filename << std::endl;
+		std::cout << "ERROR: Unable to open image file: "
+			<< pathname << "\n";
 		exit ( EXIT_FAILURE );
 	}
 	ifs.seekg ( 0 , std::ios::beg );
-	std::string line ;
-	getline ( ifs , line );
-	std::istringstream line_sstm{ line };
-	int obj_cnt;
-	line_sstm >> obj_cnt;
-	while( obj_cnt-- )
+	int index = 0;
+	// copy contents to heap memory pointed by ptr_texels
+	while( !ifs.eof () )
 	{
-		GLObject Object;
+		ifs.read ( ptr_texels , byte_size );
+	}
+	ifs.close ();
 
-		// read each object's parameters
-		getline ( ifs , line );
-		std::istringstream line_model_name{ line };
-		std::string model_name;
-		line_model_name >> model_name;
-		//std::cout << "Name :" << model_name << std::endl;
+	GLuint texobj_hdl;
+	// define and initialize a handle to texture object that will
+	// encapsulate two-dimensional textures
+	glCreateTextures ( GL_TEXTURE_2D , 1 , &texobj_hdl );
+	// allocate GPU storage for texture image data loaded from file
+	glTextureStorage2D ( texobj_hdl , 1 , GL_RGBA8 , width , height );
+	// copy image data from client memory to GPU texture buffer memory
+	glTextureSubImage2D ( texobj_hdl , 0 , 0 , 0 , width , height , GL_RGBA , GL_UNSIGNED_BYTE , ptr_texels );
+	// client memory not required since image is buffered in GPU memory
+	delete [] ptr_texels;
 
-		getline ( ifs , line );
-		std::istringstream line_model_obj_num{ line };
-		std::string model_object;
-		line_model_obj_num >> model_object;
-		//std::cout << "Object Number :" << model_object << std::endl;
-
-		getline ( ifs , line );
-		std::istringstream line_model_obj_shader{ line };
-		std::string object_shader_program , object_shader_vertex , object_shader_fragment ;
-		line_model_obj_shader >> object_shader_program ;
-		line_model_obj_shader >> object_shader_vertex ;
-		line_model_obj_shader >> object_shader_fragment ;
-		//std::cout << "Object shader program :" << object_shader_program << std::endl;
-		//std::cout << "Object shader vertex :" << object_shader_vertex << std::endl;
-		//std::cout << "Object shader fragment :" << object_shader_fragment << std::endl;
-
-		getline ( ifs , line );
-		std::istringstream line_model_obj_color{ line };
-		line_model_obj_color >> Object.color.r >> Object.color.g >> Object.color.b;
-		//std::cout << "Object color_r: " << Object.color.r << std::endl;
-		//std::cout << "Object color_g: " << Object.color.g << std::endl;
-		//std::cout << "Object color_b: " << Object.color.b << std::endl;
-
-		getline ( ifs , line );
-		std::istringstream line_model_obj_scale{ line };
-		line_model_obj_scale >> Object.scaling.x >> Object.scaling.y;
-		//std::cout << "Object scale_horizontal: " << Object.scaling.x << std::endl;
-		//std::cout << "Object scale_vertices: " << Object.scaling.y << std::endl;
-
-		getline ( ifs , line );
-		std::istringstream line_model_obj_orientation{ line };
-		line_model_obj_orientation >> Object.orientation.x >> Object.orientation.y;
-		Object.orientation.x *= 3.1425f / 180.0f;
-		Object.orientation.y *= 3.1425f / 180.0f;
-		//std::cout << "Object orientation_x: " << Object.orientation.x << std::endl;
-		//std::cout << "Object orientation_y: " << Object.orientation.y << std::endl;
-
-		getline ( ifs , line );
-		std::istringstream line_model_obj_pos{ line };
-		line_model_obj_pos >> Object.position.x >> Object.position.y;
-		//std::cout << "Object position_x: " << Object.position.x << std::endl;
-		//std::cout << "Object position_y: " << Object.position.y << std::endl;
+	return texobj_hdl;
+}
 
 
-		if( models.find ( model_name ) != models.end () )
-		{
-			Object.mdl_ref = models.find ( model_name );
-		}
-		else
-		{
-			GLModel Model ;
+void GLApp::GLModel::setup_vao ()
+{
+	std::array <glm::vec2 , 4 > pos_vtx
+	{
+		glm::vec2 ( 1.0f, -1.0f ) , glm::vec2 ( 1.0f, 1.0f ),
+		glm::vec2 ( -1.0f, 1.0f ) , glm::vec2 ( -1.0f, -1.0f )
+	};
+	std::array <glm::vec3 , 4 > clr_vtx
+	{
+		glm::vec3 ( 1.0f , 0.0f , 0.0f ) , glm::vec3 ( 0.0f , 1.0f , 0.0f ),
+		glm::vec3 ( 0.0f , 0.0f , 1.0f ) , glm::vec3 ( 1.0f , 1.0f , 1.0f )
+	};
 
-			/* Read from meshes files.*/
-			std::ifstream ifs{ "../meshes/" + model_name + ".msh" , std::ios::in };
-			if( !ifs )
-			{
-				std::cout << "ERROR: Unable to open mesh file: "
-					<< model_name << "\n";
-				exit ( EXIT_FAILURE );
-			}
-			ifs.seekg ( 0 , std::ios::beg );
-			std::string line_mesh ;
-			getline ( ifs , line_mesh );
-			std::istringstream line_sstm{ line_mesh };
-			char obj_prefix;
-			std::string mesh_name;
-			line_sstm >> obj_prefix >> mesh_name;
-			//std::cout << "Obj Prefix : " << obj_prefix << " Mesh name: " << mesh_name << std::endl;
+	std::array <glm::vec2 , 4 > tex_coor
+	{
+		glm::vec2 ( 1.0f, 0.0f ) , glm::vec2 ( 1.0f, 1.0f ),
+		glm::vec2 ( 0.0f, 1.0f ) , glm::vec2 ( 0.0f, 0.0f )
+	};
 
-			std::vector < float > pos_vtx;
-			std::vector < GLushort > gl_tri_primitives;
+	GLuint vbo ;
+	glCreateBuffers ( 1 , &vbo ) ;
+	glNamedBufferStorage ( vbo , sizeof ( glm::vec2 ) * pos_vtx.size () + sizeof ( glm::vec3 ) * clr_vtx.size () + sizeof ( glm::vec2 ) * tex_coor.size () , nullptr , GL_DYNAMIC_STORAGE_BIT ) ;
+	glNamedBufferSubData ( vbo , 0 , sizeof ( glm::vec2 ) * pos_vtx.size () , pos_vtx.data () ) ;
+	glNamedBufferSubData ( vbo , sizeof ( glm::vec2 ) * pos_vtx.size () , sizeof ( glm::vec3 ) * clr_vtx.size () , clr_vtx.data () );
+	glNamedBufferSubData ( vbo , sizeof ( glm::vec2 ) * pos_vtx.size () + sizeof ( glm::vec3 ) * clr_vtx.size () ,
+						   sizeof ( glm::vec2 ) * tex_coor.size () , tex_coor.data () );
 
-			GLuint vbo , vao , ebo ;
+	GLuint vao;
+	glCreateVertexArrays ( 1 , &vao );
 
-			while( getline ( ifs , line_mesh ) )
-			{
-				std::istringstream line_sstm{ line_mesh };
-				line_sstm >> obj_prefix;
-				float float_data ;
-				GLushort glushort_data;
+	GLCall ( glEnableVertexArrayAttrib ( vao , 0 ) );
+	GLCall ( glVertexArrayVertexBuffer ( vao , 0 , vbo , 0 , sizeof ( glm::vec2 ) ) );
+	GLCall ( glVertexArrayAttribFormat ( vao , 0 , 2 , GL_FLOAT , GL_FALSE , 0 ) );
+	GLCall ( glVertexArrayAttribBinding ( vao , 0 , 0 ) );
 
-				if( obj_prefix == 'v' )
-				{
-					while( line_sstm >> float_data )
-					{
-						pos_vtx.push_back ( float_data );
-						//std::cout << "vertex pos : " << float_data << std::endl;
-					}
-				}
-				if( obj_prefix == 't' )
-				{
-					while( line_sstm >> glushort_data )
-					{
-						gl_tri_primitives.push_back ( glushort_data );
-						//std::cout << "GL_TRIANGLES primitives : " << glushort_data << std::endl;
-					}
-					Model.primitive_type = GL_TRIANGLES ;
-				}
-				if( obj_prefix == 'f' )
-				{
-					while( line_sstm >> glushort_data )
-					{
-						gl_tri_primitives.push_back ( glushort_data );
-						//std::cout << "GL_TRIANGLES_FAN primitives : " << glushort_data << std::endl;
-					}
-					Model.primitive_type = GL_TRIANGLE_FAN ;
-				}
+	GLCall ( glEnableVertexArrayAttrib ( vao , 1 ) );
+	GLCall ( glVertexArrayVertexBuffer ( vao , 1 , vbo , sizeof ( glm::vec2 ) * pos_vtx.size () , sizeof ( glm::vec3 ) ) );
+	GLCall ( glVertexArrayAttribFormat ( vao , 1 , 3 , GL_FLOAT , GL_FALSE , 0 ) );
+	GLCall ( glVertexArrayAttribBinding ( vao , 1 , 1 ) );
 
-			}
+	GLCall ( glEnableVertexArrayAttrib ( vao , 2 ) );
+	GLCall ( glVertexArrayVertexBuffer ( vao , 2 , vbo , sizeof ( glm::vec2 ) * pos_vtx.size () + sizeof ( glm::vec3 ) * clr_vtx.size () , sizeof ( glm::vec2 ) ) );
+	GLCall ( glVertexArrayAttribFormat ( vao , 2 , 2 , GL_FLOAT , GL_FALSE , 0 ) );
+	GLCall ( glVertexArrayAttribBinding ( vao , 2 , 2 ) );
 
-			glCreateBuffers ( 1 , &vbo ) ;
-			glNamedBufferStorage ( vbo , sizeof ( float ) * pos_vtx.size () , pos_vtx.data () , GL_DYNAMIC_STORAGE_BIT ) ;
+	std::array<GLushort , 6> idx_vtx
+	{
+		0, 1, 2,
+		2, 3, 0
+	};
 
-			glCreateVertexArrays ( 1 , &vao );
-			GLCall ( glEnableVertexArrayAttrib ( vao , 0 ) );
-			GLCall ( glVertexArrayVertexBuffer ( vao , 0 , vbo , 0 , 2 * sizeof ( float ) ) );
-			GLCall ( glVertexArrayAttribFormat ( vao , 0 , 2 , GL_FLOAT , GL_FALSE , 0 ) );
-			GLCall ( glVertexArrayAttribBinding ( vao , 0 , 0 ) );
+	GLuint ebo_hdl;
+	glCreateBuffers ( 1 , &ebo_hdl );
+	glNamedBufferStorage ( ebo_hdl , sizeof ( GLshort ) * idx_vtx.size () , idx_vtx.data () , GL_DYNAMIC_STORAGE_BIT );
+	glVertexArrayElementBuffer ( vao , ebo_hdl );
+	glBindVertexArray ( 0 );
 
-			GLCall ( glCreateBuffers ( 1 , &ebo ) );
-			GLCall ( glNamedBufferStorage ( ebo , sizeof ( GLushort ) * gl_tri_primitives.size () , gl_tri_primitives.data () , GL_DYNAMIC_STORAGE_BIT ) );
-			GLCall ( glVertexArrayElementBuffer ( vao , ebo ) );
-			GLCall ( glBindVertexArray ( 0 ) );
+	vaoid = vao;
+	primitive_type = GL_TRIANGLES;
+	primitive_cnt = idx_vtx.size ();
+	draw_cnt = idx_vtx.size ();
+}
 
-			Model.vaoid = vao;
-			Model.primitive_cnt = gl_tri_primitives.size ();
-			Model.draw_cnt = gl_tri_primitives.size ();
-
-			models[ model_name ] = Model ;
-			Object.mdl_ref = models.find ( model_name );
-		}
-
-		if( shdrpgms.find ( object_shader_program ) != shdrpgms.end () )
-		{
-			Object.shd_ref = shdrpgms.find ( object_shader_program );
-		}
-		else
-		{
-			insert_shdrpgm ( object_shader_program , object_shader_vertex , object_shader_fragment );
-			Object.shd_ref = shdrpgms.find ( object_shader_program );
-		}
-		objects[ model_object ] = Object;
+void GLApp::GLModel::setup_shdrpgm ()
+{
+	std::vector<std::pair<GLenum , std::string>> shdr_files;
+	shdr_files.push_back ( std::make_pair (
+		GL_VERTEX_SHADER ,
+		"../shaders/tutorial-5.vert" ) );
+	shdr_files.push_back ( std::make_pair (
+		GL_FRAGMENT_SHADER ,
+		"../shaders/tutorial-5.frag" ) );
+	shdr_pgm.CompileLinkValidate ( shdr_files );
+	if( GL_FALSE == shdr_pgm.IsLinked () )
+	{
+		std::cout << "Unable to compile/link/validate shader programs" << "\n";
+		std::cout << shdr_pgm.GetLog () << std::endl;
+		std::exit ( EXIT_FAILURE );
 	}
 }
 
-void GLApp::GLObject::init ()
-{}
 
-void GLApp::GLObject::draw () const
+void GLApp::GLModel::update ( double delta_time )
 {
-	shd_ref->second.Use ();
-	GLCall ( glBindVertexArray ( mdl_ref->second.vaoid ) );
+	changes += ( float ) delta_time / 5.0f;
+	if( changes > 3.14f )
+	{
+		changes = 0.0f;
+	}
+	uTileSize = s_min + ( int ) ( sin ( changes ) * s_max );
 
-	shd_ref->second.SetUniform ( "uColor" , color );
-	shd_ref->second.SetUniform ( "uModel_to_NDC" , mdl_to_ndc_xform );
-	GLCall ( glDrawElements ( mdl_ref->second.primitive_type , mdl_ref->second.draw_cnt , GL_UNSIGNED_SHORT , NULL ) );
+	if( GLHelper::keystateT && Tlast != GLHelper::keystateT )
+	{
+		shaderMode = shaderMode + 1 > 6 ? 0 : (shaderMode + 1);
+	}
 
-	glBindVertexArray ( 0 );
-	shd_ref->second.UnUse ();
+	// The user can toggle the modulate mode by pressing the keyboard button .
+	if( GLHelper::keystateM && Mlast != GLHelper::keystateM )
+	{
+		uModulate = !uModulate;
+	}
+
+	// The user can toggle the transparency mode by pressing the keyboard button .
+	if( GLHelper::keystateA && Alast != GLHelper::keystateA )
+	{ 
+		uBlend = !uBlend;
+	}
+
+	Tlast = GLHelper::keystateT;
+	Mlast = GLHelper::keystateM;
+	Alast = GLHelper::keystateA;
 }
 
-void GLApp::GLObject::update ( GLdouble delta_time )
+void GLApp::GLModel::draw ()
 {
-	glm::mat3 Scale
+	glBindTextureUnit ( 6 , images );
+
+	if( shaderMode == 4 )
 	{
-		scaling.x	, 0			, 0 ,
-		0			, scaling.y	, 0 ,
-		0			, 0			, 1
-	};
-
-	orientation.x += orientation.y * ( float ) delta_time;
-
-	glm::mat3 Rotate
+		// Repeating textures with modulated fragment color
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_S , GL_REPEAT );
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_T , GL_REPEAT );
+	}
+	else if( shaderMode == 5 )
 	{
-		 cos ( orientation.x )	, sin ( orientation.x ) ,	0 ,
-		-sin ( orientation.x )	, cos ( orientation.x ) ,	0 ,
-		 0						, 0						, 	1
-	};
-
-	glm::mat3 Translate
+		// Repeating and mirroring texture mapping with modulated fragment color
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_S , GL_MIRRORED_REPEAT );
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_T , GL_MIRRORED_REPEAT );
+	}
+	else if( shaderMode == 6 )
 	{
-		1			,	0			,	0 ,
-		0			,	1			,	0 ,
-		position.x	,	position.y	,	1
-	};
+		// Clamping texture coordinates to edge of image
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_S , GL_CLAMP_TO_EDGE );
+		glTextureParameteri ( images , GL_TEXTURE_WRAP_T , GL_CLAMP_TO_EDGE );
+	}
 
-	glm::mat3 Extend
+	// suppose shdrpgm is the handle to shader program object
+	// that will render the rectangular model
+	shdr_pgm.Use ();
+	glBindVertexArray ( vaoid );
+
+	if( uBlend )
 	{
-		1.0f / 20000.0f	, 0					,	0	,
-		0				, 1.0f / 20000.0f	,	0	,
-		0				, 0					,	1
-
-	};
-
-	mdl_to_ndc_xform = camera2d.world_to_ndc_xform * Translate * Rotate * Scale ;
-}
-
-void GLApp::Camera2D::init ( GLFWwindow* pWindow , GLApp::GLObject* ptr )
-{
-	pgo = ptr;
-
-	GLsizei fb_width , fb_height;
-	glfwGetFramebufferSize ( pWindow , &fb_width , &fb_height );
-	ar = static_cast< GLfloat >( fb_width ) / fb_height;
-
-	width = ( int ) ar * height;
-
-	camwin_to_ndc_xform =
-	{
-		2.0f / ( float ) width	, 0							, 0 ,
-		0						, 2.0f / ( float ) height	, 0 ,
-		0						, 0							, 1
-	};
-
-
-	up = { -sin ( pgo->orientation.x ), cos ( pgo->orientation.x ) };
-
-	right = { cos ( pgo->orientation.x ) , sin ( pgo->orientation.x ) };
-
-	view_xform =
-	{
-		1					, 0					, 0 ,
-		0					, 1					, 0 ,
-		-ptr->position.x	, -ptr->position.y	, 1
-	};
-
-	world_to_ndc_xform = camwin_to_ndc_xform * view_xform;
-
-}
-
-void GLApp::Camera2D::update ( GLFWwindow* pWindow , GLdouble delta_time )
-{
-	GLsizei fb_width , fb_height;
-	glfwGetFramebufferSize ( pWindow , &fb_width , &fb_height );
-	ar = static_cast< GLfloat >( fb_width ) / fb_height;
-
-	width = ( int ) ar * height;
-
-	camwin_to_ndc_xform =
-	{
-		2.0f / ( float ) width	, 0							, 0 ,
-		0						, 2.0f / ( float ) height	, 0 ,
-		0						, 0							, 1
-	};
-
-	up = { -sin ( pgo->orientation.x ), cos ( pgo->orientation.x ) };
-
-	right = { cos ( pgo->orientation.x ) , sin ( pgo->orientation.x ) };
-	if( GLHelper::keystateV && GLHelper::keystateV != keystateVlast )
-	{
-		if( camtype_flag == GL_FALSE )
-		{
-			camtype_flag = GL_TRUE;
-		}
-		else
-		{
-			camtype_flag = GL_FALSE;
-		}
-	};
-	if( !camtype_flag )
-	{
-		view_xform =
-		{
-			1					, 0					, 0 ,
-			0					, 1					, 0 ,
-			-pgo->position.x	, -pgo->position.y	, 1
-		};
+		glEnable ( GL_BLEND );
+		glBlendFunc ( GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA );
 	}
 	else
 	{
-		float right_dot_position
-		{ ( right.x * pgo->position.x ) + ( right.y * pgo->position.y ) };
-
-		float up_dot_position
-		{ ( up.x * pgo->position.x ) + ( up.y * pgo->position.y ) };
-
-		view_xform =
-		{
-			right.x					, up.x					, 0 ,
-			right.y					, up.y					, 0 ,
-			-right_dot_position		, -up_dot_position		, 1
-		};
+		glDisable ( GL_BLEND );
 	}
+	
+	shdr_pgm.SetUniform ( "uTileSize" , uTileSize );
+	shdr_pgm.SetUniform ( "uShaderMode" , shaderMode );
+	shdr_pgm.SetUniform ( "uModulate" , uModulate );
 
+	// tell fragment shader sampler uTex2d will use texture image unit 6
+	GLuint tex_loc = glGetUniformLocation ( shdr_pgm.GetHandle () , "uTex2d" );
+	glUniform1i ( tex_loc , 6 );
 
-
-	if( GLHelper::keystateZ )
-	{
-		if( height <= min_height )
-			height_chg_dir = 1;
-		else if( height >= max_height )
-			height_chg_dir = -1;
-
-		height += height_chg_val * height_chg_dir;
-	}
-
-	if( GLHelper::keystateH )
-	{
-		pgo->orientation.x += 1.0f * ( float ) delta_time;
-	}
-
-	if( GLHelper::keystateK )
-	{
-		pgo->orientation.x -= 1.0f * ( float ) delta_time;
-	}
-
-
-	if( GLHelper::keystateU )
-	{
-		pgo->position += up * linear_speed ;
-	}
-
-	world_to_ndc_xform = camwin_to_ndc_xform * view_xform;
+	glDrawElements ( primitive_type , draw_cnt , GL_UNSIGNED_SHORT , NULL );
+	glBindVertexArray ( 0 );
+	shdr_pgm.UnUse ();
 }
