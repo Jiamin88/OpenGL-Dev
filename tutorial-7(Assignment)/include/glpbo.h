@@ -122,7 +122,7 @@ struct GLPbo
 	static GLSLShader shdr_pgm; // object that abstracts away nitty-gritty
 								// details of shader management
 
-  // --- here we're trying to emulate GL's functions for clearing colorbuffer ---
+	// --- here we're trying to emulate GL's functions for clearing colorbuffer ---
 
 	// overloaded functions akin to glClearcolor that set GLPbo::clear_clr
 	// with user-supplied parameters ...
@@ -153,6 +153,40 @@ struct GLPbo
 			r ( re ) , g ( gr ) , b ( bl ) , a ( al )
 		{}
 	};
+
+
+
+	struct Model
+	{
+		// vertex position array pm 
+		std::vector<glm::vec3> pm;
+		// per-vertex normal coordinates
+		std::vector<glm::vec3> nml;
+		// coordinates which must then be converted by you to RGB values
+		// not used in this submission
+		std::vector<glm::vec2> tex;
+		// triangle indices
+		std::vector<unsigned short> tri;
+		// window coordinates in array pd are obtained after NDC coordinates in array pm are transformed by rotation transform followed by viewport transformation matrix
+		std::vector<glm::vec3> pd;
+	};
+
+	static Model model_data;
+	static std::vector <std::pair< std::string , Model>> all_model_data ;
+	static void viewport_transform ( Model& model_transfrom );
+	static bool render_triangle ( glm::vec3 const& p0 , glm::vec3 const& p1 , glm::vec3 const& p2 , GLPbo::Color clr );
+	static bool render_triangle ( glm::vec3 const& p0 , glm::vec3 const& p1 , glm::vec3 const& p2 , glm::vec3 const& c0 , glm::vec3 const& c1 , glm::vec3 const& c2 );
+	static glm::vec3 edge_equation ( glm::vec3 const& p0 , glm::vec3 const& p1);
+	static bool PointInEdgeTopLeft ( glm::vec3 edge_equation , glm::vec3 arbitrary_point );
+
+
+	static void line_bresenham_octant0347 ( int x1 , int y1 , int x2 , int y2 , Color clr );
+	static void line_bresenham_octant1256 ( GLint x1 , GLint y1 , GLint x2 , GLint y2 , GLPbo::Color draw_clr );
+	static void set_pixel ( int x , int y , Color clr );
+	// set all pixels with same color draw_clr on line segment starting
+	// at point P1(x1, y1) and ending at point P2(x2, y2)
+	// Note: points are in window coordinates
+	static void render_linebresenham ( GLint px0 , GLint py0 , GLint px1 , GLint py1 , GLPbo::Color draw_clr );
 
 };
 

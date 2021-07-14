@@ -4,7 +4,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <IncludePath>$(SolutionDir)lib\glfw-3.3.4.bin.WIN32\include;$(SolutionDir)lib\glew-2.1.0\include;$(SolutionDir)lib\glm-0.9.9.7;$(ProjectDir)include;$(SolutionDir)lib\dpml\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)lib\glfw-3.3.4.bin.WIN32\lib-vc2019;$(SolutionDir)lib\glew-2.1.0\lib\Release\Win32;$(SolutionDir)lib\dpml\lib\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)lib\glfw-3.3.4.bin.WIN32\lib-vc2019;$(SolutionDir)lib\glew-2.1.0\lib\Release\Win32;$(SolutionDir)lib\dpml\lib\$(Configuration);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>

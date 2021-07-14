@@ -70,6 +70,8 @@ GLuint GLPbo::pboid{};
 GLuint GLPbo::texid{};
 GLSLShader GLPbo::shdr_pgm{};
 GLPbo::Color GLPbo::clear_clr{};
+GLPbo::Model GLPbo::model_data{};
+std::vector < std::pair < std::string , GLPbo::Model>> GLPbo::all_model_data{};
 
 /* All functions
 ----------------------------------------------------------------------------- */
@@ -80,9 +82,32 @@ void GLPbo::emulate ()
 	set_clear_color ( static_cast< int >( _cos * 255.0 ) , static_cast< int >( _cos * 100.0 ) , static_cast< int >( _sin * 255.0 ) );
 
 
-	ptr_to_pbo = reinterpret_cast< Color* >( glMapNamedBuffer ( pboid , GL_WRITE_ONLY ) );	
+	ptr_to_pbo = reinterpret_cast< Color* >( glMapNamedBuffer ( pboid , GL_WRITE_ONLY ) );
+
 
 	clear_color_buffer ();
+	for( int i = 0; i < all_model_data.size () ; i++ )
+	{
+		GLPbo::viewport_transform ( all_model_data[ i ].second );
+	}
+
+	for( int i = 0 ; i < all_model_data[ 1 ].second.tri.size (); i += 3 )
+	{
+		GLPbo::render_triangle ( all_model_data[ 1 ].second.pd[ all_model_data[ 1 ].second.tri[ i ] ] ,
+								 all_model_data[ 1 ].second.pd[ all_model_data[ 1 ].second.tri[ i + 1 ] ] ,
+								 all_model_data[ 1 ].second.pd[ all_model_data[ 1 ].second.tri[ i + 2 ] ] ,
+								 { 255,255,0,255 } );
+	}
+
+
+	/*GLPbo::viewport_transform ( model_data );
+	for( int i = 0 ; i < model_data.tri.size (); i += 3 )
+	{
+		GLPbo::render_triangle ( model_data.pd[ model_data.tri[ i ] ] ,
+								 model_data.pd[ model_data.tri[ i + 1 ] ] ,
+								 model_data.pd[ model_data.tri[ i + 2 ] ] ,
+								 { 255,255,0,255 } );
+	}*/
 
 
 	glUnmapNamedBuffer ( pboid );
@@ -105,8 +130,8 @@ void GLPbo::draw_fullwindow_quad ()
 }
 
 void GLPbo::init ( GLsizei w , GLsizei h )
-{	
-	std::cout << "Welcome to Tutorial 6 ! \n" << std::endl;
+{
+	std::cout << "Welcome to Tutorial 7 ! \n" << std::endl;
 
 	// Print the specs
 	GLHelper::print_specs ();
@@ -120,7 +145,7 @@ void GLPbo::init ( GLsizei w , GLsizei h )
 	GLPbo::byte_cnt = pixel_cnt * sizeof ( Color );
 
 	// Set the color in data member GLPbo::clear_clr() through GLPbo::set_clear_color ().
-	GLPbo::set_clear_color ( 255, 0 , 255 , 255 );
+	GLPbo::set_clear_color ( 255 , 0 , 255 , 255 );
 
 	// Initialize GLPbo::pboid by creating a PBO with an image store of GLPbo::byte_cnt bytes ( recall the PBO has dimensions GLPbo::width GLPbo::height with each pixel - I use the term pixel rather than texel to conform to the GL spec - having a 32 - bit RGBA value ).
 	glCreateBuffers ( 1 , &pboid );
@@ -142,10 +167,52 @@ void GLPbo::init ( GLsizei w , GLsizei h )
 	// Initialize the texture image with the PBO's contents using GL command glTextureSubImage2D (specify a 2D texture subimage).
 	GLCall ( glTextureSubImage2D ( texid , 0 , 0 , 0 , width , height , GL_RGBA , GL_UNSIGNED_BYTE , ptr_to_pbo ) );
 
-	
 	// Since position coordinates must be defined in NDC , the vertices of the standard box is defined.
 	GLPbo::setup_quad_vao ();
 	GLPbo::setup_shdrpgm ();
+
+	std::vector < std::string >data ;
+	std::ifstream file ( "../scenes/ass-1.scn" );
+	if( !file )
+	{
+		std::cout <<
+			"Error : Unable to open scene file : " <<
+			"../scenes/ass-1.scn" << std::endl;
+		exit ( EXIT_FAILURE );
+	}
+	else
+	{
+		std::string line ;
+		while( getline ( file , line ) )
+		{
+			data.push_back ( line );
+		}
+	}
+
+	for( std::string in_data : data )
+	{
+		GLPbo::model_data.pm.clear ();
+		GLPbo::model_data.nml.clear ();
+		GLPbo::model_data.tex.clear ();
+		GLPbo::model_data.tri.clear ();
+
+		if( DPML::parse_obj_mesh ( "../meshes/" + in_data + ".obj" , GLPbo::model_data.pm , GLPbo::model_data.nml , GLPbo::model_data.tex , GLPbo::model_data.tri , false , true , true ) )
+		{
+			std::cout << "../meshes/" << in_data << ".obj" << std::endl;
+			GLPbo::all_model_data.push_back ( std::make_pair ( "../meshes/" + in_data + ".obj" , GLPbo::model_data ) );
+		}
+
+	}
+
+	file.close ();
+
+	//DPML::parse_obj_mesh ( "../meshes/head.obj" , GLPbo::model_data.pm , GLPbo::model_data.nml , GLPbo::model_data.tex , GLPbo::model_data.tri , false , true , true ) ;
+
+
+	//for( auto pm : all_model_data[2].second.pm )
+	//{
+	//	std::cout << pm.x << " " << pm.y << " " << pm.z  << std::endl;
+	//}
 
 }
 
@@ -165,7 +232,7 @@ void GLPbo::setup_quad_vao ()
 
 	// Implement vertex buffer object
 	GLuint VBO;
-	
+
 	glCreateBuffers ( 1 , &VBO );
 
 	glNamedBufferStorage ( VBO , sizeof ( glm::vec2 ) * pos_vtx.size () + sizeof ( glm::vec2 ) * tex_coordinate.size () , nullptr , GL_DYNAMIC_STORAGE_BIT );
@@ -228,7 +295,7 @@ void GLPbo::setup_shdrpgm ()
 		"#version 450 core\n"
 		"layout(location = 0) in vec2 vTexCoord;\n"
 		"layout(location = 0) out vec4 fFragColor;\n"
-		"uniform sampler2D uTex2d;\n" 
+		"uniform sampler2D uTex2d;\n"
 		"void main()\n"
 		"{\n"
 		"fFragColor = texture(uTex2d, vTexCoord);\n"
@@ -280,10 +347,148 @@ void GLPbo::clear_color_buffer ()
 	{
 		*( GLPbo::ptr_to_pbo + i ) = clear_clr;
 	}
-
 	// Duplicated the data of the first row to every subsequent rows
 	for( int i = 1 ; i < height ; i++ )
 	{
-		std::memcpy ( GLPbo::ptr_to_pbo + ( width * i ) , GLPbo::ptr_to_pbo , sizeof(Color)* width );
+		std::memcpy ( GLPbo::ptr_to_pbo + ( width * i ) , GLPbo::ptr_to_pbo , sizeof ( Color ) * width );
 	}
+}
+
+void GLPbo::viewport_transform ( Model& model_transfrom )
+{
+	for( int i = 0 ; i < model_transfrom.pm.size () ; i++ )
+	{
+		model_transfrom.pd.push_back
+		(
+			{
+				( ( model_transfrom.pm[ i ].x + 1.0f ) / 2.0f ) * GLPbo::height ,
+				( ( model_transfrom.pm[ i ].y + 1.0f ) / 2.0f ) * GLPbo::width ,
+				0
+			}
+		);
+	}
+}
+
+bool GLPbo::render_triangle ( glm::vec3 const& p0 , glm::vec3 const& p1 , glm::vec3 const& p2 , GLPbo::Color clr )
+{
+	glm::vec3 P1P0 = p1 - p0;
+	glm::vec3 P2P0 = p2 - p0;
+	glm::vec3 normal =
+	{
+		P1P0.y * P2P0.z - P1P0.z * P2P0.y,
+		P1P0.z * P2P0.x - P1P0.x * P2P0.z,
+		P1P0.x * P2P0.y - P1P0.y * P2P0.x
+	};
+	if( normal.z > 0 )
+	{
+		render_linebresenham ( p0.x , p0.y , p1.x , p1.y , clr );
+		render_linebresenham ( p1.x , p1.y , p2.x , p2.y , clr );
+		render_linebresenham ( p2.x , p2.y , p0.x , p0.y , clr );
+	}
+
+	glm::vec3 line0 = edge_equation ( p1 , p2 );
+	glm::vec3 line1 = edge_equation ( p2 , p0 );
+	glm::vec3 line2 = edge_equation ( p0 , p1 );
+
+	float min_x = floor ( std::min ( { p0.x, p1.x ,p2.x } ) );
+	float max_x = ceil ( std::max ( { p0.x, p1.x ,p2.x } ) );
+	float min_y = floor ( std::min ( { p0.y, p1.y ,p2.y } ) );
+	float max_y = ceil ( std::max ( { p0.y, p1.y ,p2.y } ) );
+
+	int Eval0 = PointInEdgeTopLeft ( line0 , { min_x + 0.5f , min_y + 0.5f,0 } );
+	int Eval1 = PointInEdgeTopLeft ( line1 , { min_x + 0.5f , min_y + 0.5f,0 } );
+	int Eval2 = PointInEdgeTopLeft ( line2 , { min_x + 0.5f , min_y + 0.5f,0 } );
+
+	//for( int y = min_y ; y < max_y ; ++y )
+	//{
+	//	hEval0 = line0; hEval1 = line1; hEval2 = line2;
+	//	for( int x = min_x ; x < max_x ; ++x )
+	//	{
+	//		PointInEdgeTopLeft()
+	//	}
+	//}
+
+	return false;
+}
+
+bool GLPbo::render_triangle ( glm::vec3 const& p0 , glm::vec3 const& p1 , glm::vec3 const& p2 , glm::vec3 const& c0 , glm::vec3 const& c1 , glm::vec3 const& c2 )
+{
+	return false;
+}
+
+glm::vec3 GLPbo::edge_equation ( glm::vec3 const& p0 , glm::vec3 const& p1 )
+{
+	return { p0.y - p1.y , p1.x - p0.x , p0.x * p1.y - p1.x * p0.y };
+}
+
+bool GLPbo::PointInEdgeTopLeft ( glm::vec3 edge_equation , glm::vec3 arbitrary_point )
+{
+	int evaluate = ( edge_equation.x * arbitrary_point.x ) + ( edge_equation.y * arbitrary_point.y ) + edge_equation.z;
+	if( evaluate > 0 || edge_equation.x > 0 || edge_equation.y < 0 ) return true;
+	return false;
+}
+
+void GLPbo::line_bresenham_octant0347 ( int x1 , int y1 , int x2 , int y2 , Color clr )
+{
+	int dx = x2 - x1 , dy = y2 - y1;
+	int xstep = ( dx < 0 ) ? -1 : 1;
+	int ystep = ( dy < 0 ) ? -1 : 1;
+	dx = ( dx < 0 ) ? -dx : dx;
+	dy = ( dy < 0 ) ? -dy : dy;
+	int d = 2 * dy - dx , dmin = 2 * dy , dmaj = 2 * dy - 2 * dx;
+	GLPbo::set_pixel ( x1 , y1 , clr );
+	while( --dx > 0 )
+	{
+		y1 += ( d > 0 ) ? ystep : 0;
+		d += ( d > 0 ) ? dmaj : dmin;
+		x1 += xstep;
+		GLPbo::set_pixel ( x1 , y1 , clr );
+	}
+}
+
+void GLPbo::line_bresenham_octant1256 ( GLint x1 , GLint y1 , GLint x2 , GLint y2 , GLPbo::Color draw_clr )
+{
+	int dx = x2 - x1 , dy = y2 - y1;
+	int xstep = ( dx < 0 ) ? -1 : 1;
+	int ystep = ( dy < 0 ) ? -1 : 1;
+	dx = ( dx < 0 ) ? -dx : dx;
+	dy = ( dy < 0 ) ? -dy : dy;
+	int d = 2 * dx - dy , dmin = 2 * dx , dmaj = 2 * dx - 2 * dy;
+	GLPbo::set_pixel ( x1 , y1 , draw_clr );
+	while( --dy > 0 )
+	{
+		x1 += ( d > 0 ) ? xstep : 0;
+		d += ( d > 0 ) ? dmaj : dmin;
+		y1 += ystep;
+		GLPbo::set_pixel ( x1 , y1 , draw_clr );
+	}
+}
+
+void GLPbo::set_pixel ( int x , int y , Color clr )
+{
+	if( x < 0 || x >= GLPbo::width || y < 0 || y >= GLPbo::height )
+	{
+		return;
+	}
+	else
+	{
+		int locate = ( GLPbo::width * y ) + x;
+		GLPbo::ptr_to_pbo[ locate ] = clr;
+	}
+
+}
+
+void GLPbo::render_linebresenham ( GLint px0 , GLint py0 , GLint px1 , GLint py1 , GLPbo::Color draw_clr )
+{
+	GLint absX = abs ( px1 - px0 );
+	GLint absY = abs ( py1 - py0 );
+	if( absY <= absX )
+	{
+		line_bresenham_octant0347 ( px0 , py0 , px1 , py1 , draw_clr );
+	}
+	else
+	{
+		line_bresenham_octant1256 ( px0 , py0 , px1 , py1 , draw_clr );
+	}
+
 }
