@@ -103,8 +103,10 @@ void GLApp::GLModel::setup_vao ()
 	};
 	std::array<glm::vec3 , 4> clr_vtx
 	{
-	glm::vec3 ( 1.f, 0.f, 0.f ), glm::vec3 ( 0.f, 1.f, 0.f ),
-	glm::vec3 ( 0.f, 0.f, 1.f ), glm::vec3 ( 1.f, 1.f, 1.f )
+	glm::vec3 ( 1.f, 0.f, 0.f ), 
+	glm::vec3 ( 0.f, 1.f, 0.f ),
+	glm::vec3 ( 0.f, 0.f, 1.f ), 
+	glm::vec3 ( 1.f, 1.f, 1.f )
 	};
 	// transfer vertex position and color attributes to VBO
 	GLuint vbo_hdl;

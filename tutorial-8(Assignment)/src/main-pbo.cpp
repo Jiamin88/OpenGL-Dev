@@ -73,9 +73,9 @@ static void update() {
   // time between previous and current frame
   double delta_time = GLHelper::update_time(1.0);
   // write window title with current fps ...
-  std::stringstream sstr;
+ /* std::stringstream sstr;
   sstr << std::fixed << std::setprecision(2) << GLHelper::title << ": " << GLHelper::fps;
-  glfwSetWindowTitle(GLHelper::ptr_window, sstr.str().c_str());
+  glfwSetWindowTitle(GLHelper::ptr_window, sstr.str().c_str());*/
 
   // Part 3
   GLPbo::emulate();
@@ -107,7 +107,7 @@ Get handle to OpenGL context through GLHelper::GLFWwindow*.
 static void init() {
   // Part 1
   if (!GLHelper::init(1000, 1000, 
-      "CSD2100 Assignment: Line Rasterization, Tri Rasterization, and Barycentric Interpolation")) {
+      "r")) {
     std::cout << "Unable to create OpenGL context" << std::endl;
     std::exit(EXIT_FAILURE);
   }
